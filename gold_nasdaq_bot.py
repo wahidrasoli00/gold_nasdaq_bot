@@ -81,11 +81,12 @@ API_BASE = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 def get_gold_price():
     """
-    قیمت لحظه‌ای طلا (فیوچرز کوموکس، دلار به ازای هر انس) رو از یاهوفایننس می‌گیره.
-    این منبع رایگانه و برخلاف GoldAPI محدودیت درخواست ماهانه نداره.
+    قیمت لحظه‌ای طلای اسپات (نقطه‌ای، دلار به ازای هر انس) رو از یاهوفایننس می‌گیره.
+    این همون قیمتیه که اکثر کانال‌های نرخ انس نشون می‌دن (نه قیمت فیوچرز که چند
+    ده دلار بالاتره). این منبع رایگانه و محدودیت درخواست ماهانه نداره.
     """
     try:
-        ticker = yf.Ticker("GC=F")
+        ticker = yf.Ticker("XAUUSD=X")
         price = ticker.fast_info["last_price"]
         return price
     except Exception as e:
@@ -94,9 +95,13 @@ def get_gold_price():
 
 
 def get_nasdaq_index():
-    """آخرین مقدار شاخص نزدک (NASDAQ Composite) رو می‌گیره."""
+    """
+    آخرین مقدار شاخص نزدک-۱۰۰ (Nasdaq-100 / NAS100 / US100) رو می‌گیره —
+    همون شاخصی که اکثر پلتفرم‌های فارکس زیر اسم NAS100 نشون می‌دن.
+    (این با Nasdaq Composite که شاخص گسترده‌تریه فرق داره.)
+    """
     try:
-        ticker = yf.Ticker("^IXIC")
+        ticker = yf.Ticker("^NDX")
         price = ticker.fast_info["last_price"]
         return price
     except Exception as e:
