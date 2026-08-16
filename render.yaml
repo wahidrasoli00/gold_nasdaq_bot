@@ -1,0 +1,7 @@
+services:
+  - type: worker
+    name: gold-nasdaq-telegram-bot
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python gold_nasdaq_bot.py"
