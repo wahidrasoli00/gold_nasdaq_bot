@@ -47,7 +47,9 @@ import os
 import requests
 import time
 import logging
+import threading
 import yfinance as yf
+from flask import Flask
 
 # ==================== تنظیمات ====================
 # این سه مقدار از environment variables خونده میشن (نه از تو کد)
@@ -145,6 +147,23 @@ def edit_message(message_id: int, text: str):
         logging.error(f"خطا در ویرایش پیام: {e}")
 
 
+# -------------------- سرور وب کوچیک (فقط برای اینکه Render بیدار نگهش داره) --------------------
+# این سرور هیچ کار خاصی نمی‌کنه، فقط وقتی یه سرویس بیرونی (مثل UptimeRobot)
+# بهش سر بزنه، جواب می‌ده و Render فکر می‌کنه سرویس زنده و فعاله، پس نمی‌خوابونتش.
+
+web_app = Flask(__name__)
+
+
+@web_app.route("/")
+def health_check():
+    return "ربات روشنه و داره کار می‌کنه ✅"
+
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    web_app.run(host="0.0.0.0", port=port)
+
+
 # -------------------- حلقه اصلی ربات --------------------
 
 def main():
@@ -185,4 +204,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # حلقه ربات رو تو یه thread جدا اجرا می‌کنیم تا سرور وب هم بتونه همزمان کار کنه
+    bot_thread = threading.Thread(target=main, daemon=True)
+    bot_thread.start()
+
+    # سرور وب رو تو thread اصلی اجرا می‌کنیم (Render بهش نیاز داره)
+    run_web_server()
