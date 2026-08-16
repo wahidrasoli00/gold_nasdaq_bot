@@ -15,27 +15,27 @@
    - هر ۵ دقیقه (NASDAQ_INTERVAL) یک پیام جدید با آخرین مقدار شاخص
      نزدک (NASDAQ Composite) می‌فرسته.
 
-این نسخه مقادیر حساس (توکن، آیدی کانال، کلید API) رو از environment variables
+این نسخه مقادیر حساس (توکن ربات، آیدی کانال) رو از environment variables
 می‌خونه، نه از داخل خود فایل. این کار برای زمانی که کد رو رو گیت‌هاب/Render
-می‌ذاری ضروریه، چون نباید توکن ربات و کلید API تو کد پابلیک دیده بشه.
+می‌ذاری ضروریه، چون نباید توکن ربات تو کد پابلیک دیده بشه.
+
+قیمت طلا و شاخص نزدک هر دو از یاهوفایننس (yfinance) گرفته می‌شن که رایگانه
+و محدودیت تعداد درخواست ماهانه نداره؛ برخلاف بعضی سرویس‌های دیگه مثل GoldAPI.
 
 موقع اجرا رو کامپیوتر خودت (تست محلی)، این متغیرها رو قبل از اجرا ست کن:
     Windows (CMD):
         set BOT_TOKEN=123456:ABC-DEF...
         set CHANNEL_ID=@your_channel
-        set GOLDAPI_KEY=goldapi-xxxx
         python gold_nasdaq_bot.py
 
     Windows (PowerShell):
         $env:BOT_TOKEN="123456:ABC-DEF..."
         $env:CHANNEL_ID="@your_channel"
-        $env:GOLDAPI_KEY="goldapi-xxxx"
         python gold_nasdaq_bot.py
 
     Mac/Linux:
         export BOT_TOKEN="123456:ABC-DEF..."
         export CHANNEL_ID="@your_channel"
-        export GOLDAPI_KEY="goldapi-xxxx"
         python gold_nasdaq_bot.py
 
 رو Render، این‌ها رو تو بخش Environment Variables توی داشبورد ست می‌کنی
@@ -52,20 +52,19 @@ import yfinance as yf
 from flask import Flask
 
 # ==================== تنظیمات ====================
-# این سه مقدار از environment variables خونده میشن (نه از تو کد)
+# این دو مقدار از environment variables خونده میشن (نه از تو کد)
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHANNEL_ID = os.environ.get("CHANNEL_ID")
-GOLDAPI_KEY = os.environ.get("GOLDAPI_KEY")
 
 # این‌ها رو می‌تونی مستقیم همینجا تغییر بدی (رازی نیستن، فرقی نمی‌کنه کجا باشن)
-GOLD_EDIT_INTERVAL = 5      # هر چند ثانیه، پیام قیمت طلا رو ویرایش کنه
+GOLD_EDIT_INTERVAL = 15     # هر چند ثانیه، پیام قیمت طلا رو ویرایش کنه
 NEW_POST_INTERVAL = 300     # هر چند ثانیه (۳۰۰ = ۵ دقیقه)، به‌جای ویرایش، پیام تازه بفرسته
 NASDAQ_INTERVAL = 300       # هر چند ثانیه (۳۰۰ = ۵ دقیقه)، شاخص نزدک رو بفرسته
 # ===================================================
 
-if not all([BOT_TOKEN, CHANNEL_ID, GOLDAPI_KEY]):
+if not all([BOT_TOKEN, CHANNEL_ID]):
     raise SystemExit(
-        "خطا: یکی از BOT_TOKEN, CHANNEL_ID, GOLDAPI_KEY ست نشده. "
+        "خطا: یکی از BOT_TOKEN, CHANNEL_ID ست نشده. "
         "این مقادیر رو باید به‌عنوان environment variable تعریف کنی "
         "(یا موقع اجرای محلی، یا تو تنظیمات Render)."
     )
@@ -76,19 +75,20 @@ logging.basicConfig(
 )
 
 API_BASE = f"https://api.telegram.org/bot{BOT_TOKEN}"
-GOLDAPI_URL = "https://www.goldapi.io/api/XAU/USD"
 
 
 # -------------------- توابع کمکی برای گرفتن قیمت‌ها --------------------
 
 def get_gold_price():
-    """قیمت لحظه‌ای انس طلا رو از GoldAPI می‌گیره."""
-    headers = {"x-access-token": GOLDAPI_KEY, "Content-Type": "application/json"}
+    """
+    قیمت لحظه‌ای طلا (فیوچرز کوموکس، دلار به ازای هر انس) رو از یاهوفایننس می‌گیره.
+    این منبع رایگانه و برخلاف GoldAPI محدودیت درخواست ماهانه نداره.
+    """
     try:
-        resp = requests.get(GOLDAPI_URL, headers=headers, timeout=5)
-        resp.raise_for_status()
-        return resp.json().get("price")
-    except requests.exceptions.RequestException as e:
+        ticker = yf.Ticker("GC=F")
+        price = ticker.fast_info["last_price"]
+        return price
+    except Exception as e:
         logging.error(f"خطا در دریافت قیمت طلا: {e}")
         return None
 
