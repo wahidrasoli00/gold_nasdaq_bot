@@ -81,12 +81,15 @@ API_BASE = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 def get_gold_price():
     """
-    قیمت لحظه‌ای طلای اسپات (نقطه‌ای، دلار به ازای هر انس) رو از یاهوفایننس می‌گیره.
-    این همون قیمتیه که اکثر کانال‌های نرخ انس نشون می‌دن (نه قیمت فیوچرز که چند
-    ده دلار بالاتره). این منبع رایگانه و محدودیت درخواست ماهانه نداره.
+    قیمت لحظه‌ای طلا رو از یاهوفایننس می‌گیره (نماد فیوچرز کوموکس: GC=F).
+    این تنها نمادیه که به‌طور پایدار رو یاهو فایننس کار می‌کنه؛ نمادهای اسپات
+    مثل XAUUSD=X معمولاً "symbol not found" میدن و قابل اتکا نیستن.
+
+    نکته مهم: قیمت فیوچرز معمولاً ۳۰ تا ۶۰ دلار بالاتر از قیمت اسپات
+    (نقطه‌ای) معامله می‌شه — این یه تفاوت طبیعی بازاره، نه خطا.
     """
     try:
-        ticker = yf.Ticker("XAUUSD=X")
+        ticker = yf.Ticker("GC=F")
         price = ticker.fast_info["last_price"]
         return price
     except Exception as e:
@@ -182,7 +185,7 @@ def main():
         # ---------- قیمت طلا ----------
         price = get_gold_price()
         if price is not None:
-            text = f"🥇 نرخ انس طلا: <b>{price:,.2f}</b> دلار"
+            text = f"🥇 نرخ طلا (فیوچرز): <b>{price:,.2f}</b> دلار"
 
             need_new_post = (gold_message_id is None) or (seconds_since_new_post >= NEW_POST_INTERVAL)
 
