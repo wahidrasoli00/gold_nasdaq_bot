@@ -79,37 +79,51 @@ API_BASE = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 # -------------------- توابع کمکی برای گرفتن قیمت‌ها --------------------
 
+def fetch_price(symbol: str):
+    """
+    قیمت یه نماد رو از یاهوفایننس می‌گیره. اول روش سریع (fast_info) رو امتحان
+    می‌کنه؛ اگه جواب نداد (که برای بعضی نمادهای فارکسی/کالایی ۲۴ ساعته مثل
+    طلای اسپات پیش میاد، چون این نمادها "ساعت بازار" مشخصی ندارن و fast_info
+    گیج می‌شه)، به روش کندتر ولی مطمئن‌تر (گرفتن آخرین کندل قیمتی) سوییچ می‌کنه.
+    """
+    ticker = yf.Ticker(symbol)
+
+    try:
+        return float(ticker.fast_info["last_price"])
+    except Exception:
+        pass
+
+    try:
+        hist = ticker.history(period="1d", interval="1m")
+        if not hist.empty:
+            return float(hist["Close"].iloc[-1])
+    except Exception as e:
+        logging.error(f"خطا در دریافت قیمت {symbol}: {e}")
+
+    return None
+
+
 def get_gold_price():
     """
-    قیمت لحظه‌ای طلا رو از یاهوفایننس می‌گیره (نماد فیوچرز کوموکس: GC=F).
-    این تنها نمادیه که به‌طور پایدار رو یاهو فایننس کار می‌کنه؛ نمادهای اسپات
-    مثل XAUUSD=X معمولاً "symbol not found" میدن و قابل اتکا نیستن.
-
-    نکته مهم: قیمت فیوچرز معمولاً ۳۰ تا ۶۰ دلار بالاتر از قیمت اسپات
-    (نقطه‌ای) معامله می‌شه — این یه تفاوت طبیعی بازاره، نه خطا.
+    قیمت لحظه‌ای طلای اسپات (نقطه‌ای، همونی که برای معامله لازمه) رو از
+    یاهوفایننس می‌گیره. اگه به هر دلیلی این نماد در دسترس نبود، به‌عنوان
+    پشتیبان از قیمت فیوچرز استفاده می‌کنه (که نزدیکه ولی دقیقاً یکی نیست).
     """
-    try:
-        ticker = yf.Ticker("GC=F")
-        price = ticker.fast_info["last_price"]
+    price = fetch_price("XAUUSD=X")
+    if price is not None:
         return price
-    except Exception as e:
-        logging.error(f"خطا در دریافت قیمت طلا: {e}")
-        return None
+
+    logging.warning("قیمت اسپات طلا در دسترس نبود؛ از فیوچرز به‌عنوان جایگزین استفاده می‌شه")
+    return fetch_price("GC=F")
 
 
 def get_nasdaq_index():
     """
     آخرین مقدار شاخص نزدک-۱۰۰ (Nasdaq-100 / NAS100 / US100) رو می‌گیره —
-    همون شاخصی که اکثر پلتفرم‌های فارکس زیر اسم NAS100 نشون می‌دن.
-    (این با Nasdaq Composite که شاخص گسترده‌تریه فرق داره.)
+    همون شاخصی که اکثر پلتفرم‌های فارکس (از جمله فارکس‌کام) زیر اسم NAS100
+    نشون می‌دن. این خودش قیمت نقطه‌ای/کش شاخصه، نه فیوچرز.
     """
-    try:
-        ticker = yf.Ticker("^NDX")
-        price = ticker.fast_info["last_price"]
-        return price
-    except Exception as e:
-        logging.error(f"خطا در دریافت شاخص نزدک: {e}")
-        return None
+    return fetch_price("^NDX")
 
 
 # -------------------- توابع کمکی برای ارتباط با تلگرام --------------------
@@ -185,7 +199,7 @@ def main():
         # ---------- قیمت طلا ----------
         price = get_gold_price()
         if price is not None:
-            text = f"🥇 نرخ طلا (فیوچرز): <b>{price:,.2f}</b> دلار"
+            text = f"🥇 نرخ اسپات طلا: <b>{price:,.2f}</b> دلار"
 
             need_new_post = (gold_message_id is None) or (seconds_since_new_post >= NEW_POST_INTERVAL)
 
